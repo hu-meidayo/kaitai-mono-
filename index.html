@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>旅行 買いたいものリスト</title>
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="買いたいもの">
+  <link rel="manifest" href="manifest.json">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #fdf6f0;
+      --surface: #ffffff;
+      --primary: #f4a5c0;
+      --primary-dark: #e8809f;
+      --accent: #a8d8b9;
+      --text: #4a4a4a;
+      --text-light: #9e9e9e;
+      --shadow: rgba(0,0,0,0.10);
+      --border: #f0e6df;
+      --bought-bg: #f5f5f5;
+      --bought-text: #b0b0b0;
+      --danger: #f28b82;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 100px;
+    }
+
+    /* ヘッダー */
+    header {
+      background: linear-gradient(135deg, #f4a5c0 0%, #f9c9a8 100%);
+      padding: 20px 16px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+
+    .header-subtitle {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.85);
+      margin-top: 2px;
+    }
+
+    /* 合計金額バー */
+    .summary-bar {
+      background: rgba(255,255,255,0.3);
+      border-radius: 10px;
+      padding: 8px 14px;
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .summary-bar .label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .summary-bar .total {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* フィルタータブ */
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px 0;
+    }
+
+    .filter-tab {
+      border: none;
+      background: var(--surface);
+      color: var(--text-light);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px var(--shadow);
+    }
+
+    .filter-tab.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* グリッド */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 12px 16px;
+    }
+
+    /* カード */
+    .card {
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px var(--shadow);
+      position: relative;
+      transition: transform 0.15s, opacity 0.3s;
+      cursor: pointer;
+    }
+
+    .card:active {
+      transform: scale(0.97);
+    }
+
+    .card.bought {
+      opacity: 0.65;
+    }
+
+    .card.bought .card-img {
+      filter: grayscale(60%);
+    }
+
+    /* 削除ボタン */
+    .delete-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.45);
+      border: none;
+      color: #fff;
+      font-size: 0.9rem;
+      line-height: 26px;
+      text-align: center;
+      cursor: pointer;
+      display: none;
+      z-index: 10;
+      transition: background 0.2s;
+    }
+
+    .card.edit-mode .delete-btn {
+      display: block;
+    }
+
+    .delete-btn:hover {
+      background: var(--danger);
+    }
+
+    /* 購入済みバッジ */
+    .bought-badge {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      display: none;
+      z-index: 9;
+    }
+
+    .card.bought .bought-badge {
+      display: block;
+    }
+
+    /* カード画像 */
+    .card-img-wrap {
+      width: 100%;
+      padding-top: 100%;
+      position: relative;
+      background: #f5eae3;
+      overflow: hidden;
+    }
+
+    .card-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-img-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-light);
+      gap: 4px;
+    }
+
+    .card-img-placeholder span {
+      font-size: 2rem;
+    }
+
+    .card-img-placeholder p {
+      font-size: 0.7rem;
+    }
+
+    /* カード本文 */
+    .card-body {
+      padding: 8px 10px 10px;
+    }
+
+    .card-name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card.bought .card-name {
+      color: var(--bought-text);
+      text-decoration: line-through;
+    }
+
+    .card-shop {
+      font-size: 0.72rem;
+      color: var(--text-light);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-price {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-top: 4px;
+    }
+
+    .card.bought .card-price {
+      color: var(--bought-text);
+    }
+
+    .card-memo {
+      font-size: 0.7rem;
+      color: var(--text-light);
+      margin-top: 3px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* 空状態 */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-light);
+      grid-column: 1 / -1;
+    }
+
+    .empty-state .emoji {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    .empty-state p {
+      font-size: 0.9rem;
+    }
+
+    /* FAB */
+    .fab {
+      position: fixed;
+      right: 20px;
+      bottom: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f4a5c0, #f9c9a8);
+      border: none;
+      color: #fff;
+      font-size: 1.8rem;
+      box-shadow: 0 4px 14px rgba(244,165,192,0.5);
+      cursor: pointer;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+
+    .fab:active {
+      transform: scale(0.92);
+    }
+
+    /* モーダルオーバーレイ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 300;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      width: 100%;
+      max-width: 480px;
+      border-radius: 24px 24px 0 0;
+      padding: 20px 20px 40px;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 18px;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    /* 画像選択エリア */
+    .img-select-area {
+      width: 100%;
+      padding-top: 56%;
+      position: relative;
+      background: #f9f3ef;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      border: 2px dashed var(--border);
+      cursor: pointer;
+    }
+
+    .img-select-area.has-img {
+      border-style: solid;
+      border-color: var(--primary);
+    }
+
+    .img-select-inner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text-light);
+    }
+
+    .img-select-inner span {
+      font-size: 2rem;
+    }
+
+    .img-select-inner p {
+      font-size: 0.8rem;
+    }
+
+    .img-preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .img-select-area.has-img .img-preview {
+      display: block;
+    }
+
+    .img-select-area.has-img .img-select-inner {
+      display: none;
+    }
+
+    /* フォーム */
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    .form-input {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: #fdf9f7;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+    }
+
+    textarea.form-input {
+      resize: none;
+      height: 70px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* 送信ボタン */
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #f4a5c0, #f9c9a8);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: opacity 0.2s;
+    }
+
+    .submit-btn:active {
+      opacity: 0.85;
+    }
+
+    /* 編集モード切替 */
+    .edit-toggle {
+      border: none;
+      background: rgba(255,255,255,0.3);
+      color: #fff;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .edit-toggle.active {
+      background: rgba(255,255,255,0.5);
+    }
+
+    /* 詳細モーダル */
+    .detail-img {
+      width: 100%;
+      border-radius: 14px;
+      max-height: 260px;
+      object-fit: cover;
+      display: block;
+      margin-bottom: 14px;
+    }
+
+    .detail-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .detail-shop {
+      font-size: 0.82rem;
+      color: var(--text-light);
+      margin-top: 3px;
+    }
+
+    .detail-price {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-top: 6px;
+    }
+
+    .detail-memo {
+      font-size: 0.85rem;
+      color: var(--text);
+      margin-top: 10px;
+      line-height: 1.6;
+      background: #fdf6f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .detail-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .action-btn {
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .action-btn:active { opacity: 0.8; }
+
+    .action-btn.buy {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .action-btn.del {
+      background: #fde8e8;
+      color: var(--danger);
+    }
+
+    /* OCRステータス */
+    .ocr-status {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      text-align: center;
+      padding: 4px 0 2px;
+      min-height: 1.2em;
+      display: none;
+    }
+
+    .ocr-status.visible {
+      display: block;
+    }
+
+    .ocr-status.success {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .ocr-status.error {
+      color: var(--danger);
+    }
+
+    /* スクロールバー */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @media (min-width: 480px) {
+      .modal { border-radius: 24px; margin-bottom: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>旅行 買いたいものリスト</h1>
+      <p class="header-subtitle">旅先で見つけたお気に入りを保存</p>
+    </div>
+    <button class="edit-toggle" id="editToggle">編集</button>
+  </div>
+  <div class="summary-bar">
+    <span class="label">購入予定の合計</span>
+    <span class="total" id="totalAmount">¥0</span>
+  </div>
+</header>
+
+<div class="filter-tabs">
+  <button class="filter-tab active" data-filter="all">すべて</button>
+  <button class="filter-tab" data-filter="pending">未購入</button>
+  <button class="filter-tab" data-filter="bought">購入済み</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<button class="fab" id="fabBtn" aria-label="アイテムを追加">+</button>
+
+<!-- 追加モーダル -->
+<div class="modal-overlay" id="addModal" role="dialog" aria-modal="true" aria-label="アイテム追加">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <p class="modal-title">アイテムを追加</p>
+
+    <div class="img-select-area" id="imgSelectArea">
+      <div class="img-select-inner">
+        <span>📷</span>
+        <p>タップして写真を選ぶ</p>
+      </div>
+      <img class="img-preview" id="imgPreview" alt="プレビュー">
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <p class="ocr-status" id="ocrStatus"></p>
+
+    <form id="addForm">
+      <div class="form-group">
+        <label class="form-label" for="inputName">商品名</label>
+        <input class="form-input" type="text" id="inputName" placeholder="例: ショールダーバッグ" maxlength="60">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="inputShop">お店名</label>
+          <input class="form-input" type="text" id="inputShop" placeholder="例: ZARA" maxlength="40">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputPrice">価格</label>
+          <input class="form-input" type="number" id="inputPrice" placeholder="例: 5800" min="0" max="99999999">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inputMemo">メモ</label>
+        <textarea class="form-input" id="inputMemo" placeholder="色・サイズ・気になった理由など" maxlength="200"></textarea>
+      </div>
+      <button type="submit" class="submit-btn">追加する</button>
+    </form>
+  </div>
+</div>
+
+<!-- 詳細モーダル -->
+<div class="modal-overlay" id="detailModal" role="dialog" aria-modal="true" aria-label="アイテム詳細">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <img class="detail-img" id="detailImg" alt="商品画像" style="display:none">
+    <p class="detail-name" id="detailName"></p>
+    <p class="detail-shop" id="detailShop"></p>
+    <p class="detail-price" id="detailPrice"></p>
+    <p class="detail-memo" id="detailMemo" style="display:none"></p>
+    <div class="detail-actions">
+      <button class="action-btn buy" id="detailBuyBtn"></button>
+      <button class="action-btn del" id="detailDelBtn">削除する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const STORAGE_KEY = 'travel_wishlist_v1';
+  const MAX_IMG_SIZE = 800;
+  const JPEG_QUALITY = 0.85;
+  const TESSERACT_CDN = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+
+  // --- ストレージ ---
+  function loadItems() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveItems(items) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      alert('保存容量が不足しています。不要なアイテムを削除してください。');
+    }
+  }
+
+  // --- 画像圧縮 ---
+  function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          let w = img.width;
+          let h = img.height;
+          if (w > MAX_IMG_SIZE || h > MAX_IMG_SIZE) {
+            if (w > h) { h = Math.round(h * MAX_IMG_SIZE / w); w = MAX_IMG_SIZE; }
+            else { w = Math.round(w * MAX_IMG_SIZE / h); h = MAX_IMG_SIZE; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // --- Tesseract動的ロード ---
+  function loadTesseract() {
+    return new Promise(function (resolve) {
+      if (window.Tesseract) { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = TESSERACT_CDN;
+      s.onload = resolve;
+      document.head.appendChild(s);
+    });
+  }
+
+  // --- OCR実行 ---
+  async function runOCR(dataUrl) {
+    try {
+      await loadTesseract();
+      const worker = await Tesseract.createWorker('jpn+eng');
+      const result = await worker.recognize(dataUrl);
+      await worker.terminate();
+      return result.data.text;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  // --- 商品名抽出 ---
+  // 最初の意味のある行（2文字以上、数字始まりでない）を商品名として返す
+  function extractProductName(text) {
+    const lines = text.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length >= 2; });
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i];
+      if (!/^\d/.test(l) && !/^[¥￥$€฿\d]/.test(l)) {
+        return l;
+      }
+    }
+    return '';
+  }
+
+  // --- 状態 ---
+  let items = loadItems();
+  let currentFilter = 'all';
+  let editMode = false;
+  let selectedImgData = null;
+  let detailTargetId = null;
+
+  // --- DOM参照 ---
+  const grid = document.getElementById('grid');
+  const addModal = document.getElementById('addModal');
+  const detailModal = document.getElementById('detailModal');
+  const fabBtn = document.getElementById('fabBtn');
+  const editToggle = document.getElementById('editToggle');
+  const imgSelectArea = document.getElementById('imgSelectArea');
+  const fileInput = document.getElementById('fileInput');
+  const imgPreview = document.getElementById('imgPreview');
+  const addForm = document.getElementById('addForm');
+  const inputName = document.getElementById('inputName');
+  const inputShop = document.getElementById('inputShop');
+  const inputPrice = document.getElementById('inputPrice');
+  const inputMemo = document.getElementById('inputMemo');
+  const totalAmount = document.getElementById('totalAmount');
+  const ocrStatus = document.getElementById('ocrStatus');
+  const detailImg = document.getElementById('detailImg');
+  const detailName = document.getElementById('detailName');
+  const detailShop = document.getElementById('detailShop');
+  const detailPrice = document.getElementById('detailPrice');
+  const detailMemo = document.getElementById('detailMemo');
+  const detailBuyBtn = document.getElementById('detailBuyBtn');
+  const detailDelBtn = document.getElementById('detailDelBtn');
+
+  // --- 描画 ---
+  function render() {
+    updateTotal();
+
+    let filtered = items;
+    if (currentFilter === 'pending') filtered = items.filter(i => !i.bought);
+    if (currentFilter === 'bought') filtered = items.filter(i => i.bought);
+
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+    if (filtered.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      const emojiDiv = document.createElement('div');
+      emojiDiv.className = 'emoji';
+      emojiDiv.textContent = currentFilter === 'bought' ? '🛍️' : '✨';
+      const p = document.createElement('p');
+      p.textContent = currentFilter === 'bought'
+        ? 'まだ購入済みのアイテムはありません'
+        : 'アイテムを追加して旅のお買い物を計画しよう！';
+      empty.appendChild(emojiDiv);
+      empty.appendChild(p);
+      grid.appendChild(empty);
+      return;
+    }
+
+    filtered.forEach(item => {
+      grid.appendChild(createCard(item));
+    });
+  }
+
+  function createCard(item) {
+    const card = document.createElement('div');
+    card.className = 'card' + (item.bought ? ' bought' : '') + (editMode ? ' edit-mode' : '');
+    card.dataset.id = item.id;
+
+    // 購入済みバッジ
+    const badge = document.createElement('span');
+    badge.className = 'bought-badge';
+    badge.textContent = '購入済み';
+    card.appendChild(badge);
+
+    // 削除ボタン
+    const delBtn = document.createElement('button');
+    delBtn.className = 'delete-btn';
+    delBtn.textContent = '×';
+    delBtn.setAttribute('aria-label', '削除');
+    delBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (confirm('このアイテムを削除しますか？')) {
+        deleteItem(item.id);
+      }
+    });
+    card.appendChild(delBtn);
+
+    // 画像
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'card-img-wrap';
+
+    if (item.img) {
+      const img = document.createElement('img');
+      img.className = 'card-img';
+      img.src = item.img;
+      img.alt = item.name || '商品画像';
+      img.loading = 'lazy';
+      imgWrap.appendChild(img);
+    } else {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'card-img-placeholder';
+      const span = document.createElement('span');
+      span.textContent = '🛍️';
+      const p = document.createElement('p');
+      p.textContent = '画像なし';
+      placeholder.appendChild(span);
+      placeholder.appendChild(p);
+      imgWrap.appendChild(placeholder);
+    }
+    card.appendChild(imgWrap);
+
+    // ボディ
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    const nameEl = document.createElement('p');
+    nameEl.className = 'card-name';
+    nameEl.textContent = item.name || '（商品名なし）';
+    body.appendChild(nameEl);
+
+    if (item.shop) {
+      const shopEl = document.createElement('p');
+      shopEl.className = 'card-shop';
+      shopEl.textContent = item.shop;
+      body.appendChild(shopEl);
+    }
+
+    if (item.price !== '' && item.price !== null && item.price !== undefined) {
+      const priceEl = document.createElement('p');
+      priceEl.className = 'card-price';
+      priceEl.textContent = '¥' + Number(item.price).toLocaleString();
+      body.appendChild(priceEl);
+    }
+
+    if (item.memo) {
+      const memoEl = document.createElement('p');
+      memoEl.className = 'card-memo';
+      memoEl.textContent = item.memo;
+      body.appendChild(memoEl);
+    }
+
+    card.appendChild(body);
+
+    // タップで詳細
+    card.addEventListener('click', function () {
+      if (editMode) return;
+      openDetail(item.id);
+    });
+
+    return card;
+  }
+
+  function updateTotal() {
+    const pending = items.filter(i => !i.bought && i.price !== '' && i.price !== null && i.price !== undefined);
+    const sum = pending.reduce((acc, i) => acc + Number(i.price), 0);
+    totalAmount.textContent = '¥' + sum.toLocaleString();
+  }
+
+  // --- アイテム操作 ---
+  function addItem(data) {
+    const item = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      img: data.img || null,
+      name: data.name,
+      shop: data.shop,
+      price: data.price !== '' ? Number(data.price) : null,
+      memo: data.memo,
+      bought: false,
+      createdAt: Date.now()
+    };
+    items.unshift(item);
+    saveItems(items);
+    render();
+  }
+
+  function deleteItem(id) {
+    items = items.filter(i => i.id !== id);
+    saveItems(items);
+    render();
+  }
+
+  function toggleBought(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    item.bought = !item.bought;
+    saveItems(items);
+    render();
+  }
+
+  // --- モーダル ---
+  function setOcrStatus(msg, type) {
+    ocrStatus.textContent = msg;
+    ocrStatus.className = 'ocr-status';
+    if (msg) {
+      ocrStatus.classList.add('visible');
+      if (type) ocrStatus.classList.add(type);
+    }
+  }
+
+  function openAddModal() {
+    selectedImgData = null;
+    imgPreview.src = '';
+    imgPreview.style.display = 'none';
+    imgSelectArea.classList.remove('has-img');
+    addForm.reset();
+    setOcrStatus('', '');
+    addModal.classList.add('open');
+    inputName.focus();
+  }
+
+  function closeAddModal() {
+    addModal.classList.remove('open');
+  }
+
+  function openDetail(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    detailTargetId = id;
+
+    if (item.img) {
+      detailImg.src = item.img;
+      detailImg.style.display = 'block';
+    } else {
+      detailImg.style.display = 'none';
+    }
+
+    detailName.textContent = item.name || '（商品名なし）';
+    detailShop.textContent = item.shop ? item.shop : '';
+    detailPrice.textContent = (item.price !== null && item.price !== undefined)
+      ? '¥' + Number(item.price).toLocaleString() : '';
+
+    if (item.memo) {
+      detailMemo.textContent = item.memo;
+      detailMemo.style.display = 'block';
+    } else {
+      detailMemo.style.display = 'none';
+    }
+
+    detailBuyBtn.textContent = item.bought ? '未購入に戻す' : '購入済みにする';
+    detailModal.classList.add('open');
+  }
+
+  function closeDetailModal() {
+    detailModal.classList.remove('open');
+    detailTargetId = null;
+  }
+
+  // --- イベント ---
+  fabBtn.addEventListener('click', openAddModal);
+
+  editToggle.addEventListener('click', function () {
+    editMode = !editMode;
+    editToggle.textContent = editMode ? '完了' : '編集';
+    editToggle.classList.toggle('active', editMode);
+    render();
+  });
+
+  imgSelectArea.addEventListener('click', function () {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async function () {
+    const file = fileInput.files[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file);
+      selectedImgData = compressed;
+      imgPreview.src = compressed;
+      imgPreview.style.display = 'block';
+      imgSelectArea.classList.add('has-img');
+
+      // OCR開始
+      setOcrStatus('読み取り中...（10〜20秒かかります）', '');
+      const text = await runOCR(compressed);
+      if (text) {
+        const name = extractProductName(text);
+        if (name) {
+          // 商品名欄が空の場合のみ自動入力（ユーザーが先入力していれば上書きしない）
+          if (!inputName.value.trim()) {
+            inputName.value = name;
+          }
+          setOcrStatus('「' + name + '」を読み取りました。修正できます。', 'success');
+        } else {
+          setOcrStatus('商品名を手入力してください。', 'error');
+        }
+      } else {
+        setOcrStatus('読み取り失敗。手入力してください。', 'error');
+      }
+    } catch {
+      alert('画像の読み込みに失敗しました。');
+      setOcrStatus('', '');
+    }
+    fileInput.value = '';
+  });
+
+  addForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const name = inputName.value.trim();
+    if (!name && !selectedImgData) {
+      alert('商品名または画像を入力してください。');
+      return;
+    }
+    addItem({
+      img: selectedImgData,
+      name: name,
+      shop: inputShop.value.trim(),
+      price: inputPrice.value,
+      memo: inputMemo.value.trim()
+    });
+    closeAddModal();
+  });
+
+  // モーダル外タップで閉じる
+  addModal.addEventListener('click', function (e) {
+    if (e.target === addModal) closeAddModal();
+  });
+
+  detailModal.addEventListener('click', function (e) {
+    if (e.target === detailModal) closeDetailModal();
+  });
+
+  detailBuyBtn.addEventListener('click', function () {
+    if (detailTargetId) {
+      toggleBought(detailTargetId);
+      closeDetailModal();
+    }
+  });
+
+  detailDelBtn.addEventListener('click', function () {
+    if (detailTargetId && confirm('このアイテムを削除しますか？')) {
+      deleteItem(detailTargetId);
+      closeDetailModal();
+    }
+  });
+
+  // フィルタータブ
+  document.querySelectorAll('.filter-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      render();
+    });
+  });
+
+  // ESCキー
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeAddModal();
+      closeDetailModal();
+    }
+  });
+
+  // 初回描画
+  render();
+})();
+</script>
+</body>
+</html>
