@@ -682,7 +682,46 @@
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'travel_wishlist_v1';
+  const STORAGE_KEY = 'travel_wishlist_v2';
+
+  // --- デフォルトアイテム（タイ旅行リスト） ---
+  const DEFAULT_ITEMS = [
+    // 🍬 お菓子・スナック
+    { name: 'プリッツ トムヤムクン味', shop: 'BigC・Macro', price: null, memo: '1箱12バーツ・激安！バラマキに最適。まとめ買い推奨🦐', img: null },
+    { name: 'Mini Pineapple Biscuit', shop: 'BigC・Macro', price: null, memo: 'パイナップル味・個包装・めちゃ美味しい', img: null },
+    { name: 'パイナップルジャム入りビスケット', shop: 'スーパー', price: null, memo: '王道ばらまき土産・黄色パッケージ', img: null },
+    { name: 'バナナチップス（甘くないポテチ系）', shop: 'スーパー', price: 100, memo: '⚠️時期によって売り切れあり。甘くなくてポテチ感覚。150g', img: null },
+    { name: 'バーベキュー味バナナチップス', shop: 'アイコンサイアム スークサイアム', price: 120, memo: '仲里依紗さんYouTube紹介！ガツンとBBQ味・薄く揚げてサクサク', img: null },
+    { name: 'Calbee かっぱえびせん トリュフ味', shop: 'スーパー', price: 37, memo: '「結局トリュフは喜ばれる説」バラマキに◎', img: null },
+    { name: 'タイ限定 コアラのマーチ', shop: 'スーパー', price: null, memo: 'タイ限定フレーバー・外れなし', img: null },
+    { name: 'タイ限定 ポッキー', shop: 'BigC・Macro・スーパー', price: 12, memo: 'タイ限定フレーバー・バラマキに最適', img: null },
+    { name: 'Lola Bake チョコチップチーズ＆バナナケーキ', shop: 'スーパー', price: null, memo: 'チョコチップ＋クリームチーズ＋バナナの焼き菓子', img: null },
+    { name: 'PARADAi チョコレート（高級・液体入り）', shop: '要確認', price: 720, memo: '9個入り・液体が出てくる高級チョコ・女性ウケ◎ ⚠️要冷蔵・持ち帰り注意', img: null },
+    // 🥭 ドライフルーツ
+    { name: 'SweetB Honey Mango（ドライマンゴー）', shop: 'セントラルワールド・BigC・グルメマーケット', price: null, memo: '個包装が可愛い・ハチミツ漬け', img: null },
+    { name: 'ARANYA ドライマンゴー ココナッツミルクコーティング', shop: 'スーパー各所', price: null, memo: 'SNSで話題・試食できる店多い', img: null },
+    { name: 'ドライマンゴースティッキーライス（COCO MILK MANGO）', shop: 'BigC・グルメマーケット', price: 150, memo: 'タイ感MAX！マンゴスティッキーライスのドライ版・個包装・ウケ抜群', img: null },
+    { name: 'Tiparos ナンプラー 激ミニ', shop: 'スーパー', price: 7, memo: '超激安！お土産にも◎ 調味料ミニサイズ', img: null },
+    { name: 'BanBin ドライドラゴンフルーツ', shop: 'インスタ @kidtung（DM購入・ホテル配送可）', price: 50, memo: '無添加・無農薬・砂糖不使用。子供にも安心。厚切りでジューシー', img: null },
+    { name: 'Doi Kham マンゴーグミ', shop: 'スーパー', price: null, memo: 'しっとり柔らか・タイで大人気の高級グミ', img: null },
+    { name: 'KUNNA Thai Mango Gummy', shop: 'スーパー', price: null, memo: 'マンゴーグミ別ブランド', img: null },
+    // 💆 ビューティー・日用品
+    { name: 'Green Bio Super Treatment（ヘアトリートメント）', shop: 'スーパー', price: 10, memo: '1回分パウチ・10バーツで激安！', img: null },
+    { name: '虫除けスプレー ポップペルス（ピンク）', shop: 'セブンイレブン', price: null, memo: 'タイのセブンで必ず買える定番虫除け', img: null },
+    { name: 'Sketolene（グリーン）虫除けスプレー', shop: 'セブンイレブン', price: null, memo: 'シトロネラオイル系・セブンで購入可', img: null },
+    { name: 'ヤードム（嗅ぎ薬）', shop: 'どこでも', price: null, memo: '頭痛・眠気にこめかみに塗る。毎回買って帰るほど人気', img: null },
+    // 👜 雑貨
+    { name: 'MUJI バンコク限定エコバッグ', shop: 'セントラルワールド旗艦店', price: 99, memo: 'タイ限定デザイン（ワットアルン・トムヤムクンなど）刺繍サービスあり→旅初日にオーダー！受取2〜3日', img: null },
+  ].map((d, i) => ({
+    id: 'default_' + i,
+    img: d.img,
+    name: d.name,
+    shop: d.shop,
+    price: d.price,
+    memo: d.memo,
+    bought: false,
+    createdAt: Date.now() - (22 - i) * 1000
+  }));
   const MAX_IMG_SIZE = 800;
   const JPEG_QUALITY = 0.85;
   const TESSERACT_CDN = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
@@ -691,9 +730,9 @@
   function loadItems() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      return raw ? JSON.parse(raw) : DEFAULT_ITEMS;
     } catch {
-      return [];
+      return DEFAULT_ITEMS;
     }
   }
 
